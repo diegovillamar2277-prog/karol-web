@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
-import { listarVentasRecientes } from "@/lib/actions/ventas";
+import { listarVentasRecientes, obtenerProductosConStock } from "@/lib/actions/ventas";
 import Encabezado from "@/components/Encabezado";
 import FormularioVenta from "./FormularioVenta";
 
@@ -24,6 +24,7 @@ export default async function VentasPage() {
   }
 
   const ventas = (await listarVentasRecientes()) as VentaFila[];
+  const productos = await obtenerProductosConStock();
 
   return (
     <>
@@ -31,7 +32,7 @@ export default async function VentasPage() {
       <div className="contenedor">
         <h1 style={{ marginBottom: "1.25rem", fontSize: "1.4rem" }}>Ventas</h1>
 
-        <FormularioVenta />
+        <FormularioVenta productos={productos} />
 
         <div className="tarjeta" style={{ padding: 0, overflow: "hidden" }}>
           <table className="tabla">

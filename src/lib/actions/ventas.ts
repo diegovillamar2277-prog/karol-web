@@ -14,50 +14,57 @@ async function requireSesion() {
   return sesion;
 }
 
-// Registrar una venta: producto, costo (lo que le costó a ella) y precio
-// (lo que cobró). Nunca se guardan en la misma columna — es la lección real
-// que ya sacamos de licoreria-app: mezclar costo y precio cobrado rompe la
-// integridad del reporte de ganancia en cuanto alguien edita algo después.
+// Productos activos con su stock actual, para el selector de "Registrar venta".
+export async function obtenerProductosConStock() {
+  await requireSesion();
+  const supabase = supabaseServer();
+
+  const { data, error } = await supabase
+    .from("productos")
+    .select("id, nombre, costo_referencia, cantidad_disponible")
+    .eq("activo", true)
+    .order("nombre", { ascending: true });
+
+  if (error || !data) return [];
+  return data;
+}
+
+// Registrar una venta de algo que YA ESTABA en su stock: ella solo elige
+// el producto (de lo que ya tiene registrado) y anota cuánto vendió y en
+// cuánto. El costo se toma del producto — nunca lo captura a mano — así
+// no hay forma de que costo y precio se mezclen o se equivoquen.
 export type EstadoVenta = { error?: string; success?: boolean } | null;
 
 export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
   await requireSesion();
   const supabase = supabaseServer();
 
-  const productoNombre = String(formData.get("producto") || "").trim();
-  const cantidad = Number(formData.get("cantidad") || 1);
-  const costoUnitario = Number(formData.get("costo") || 0);
+  const productoId = String(formData.get("producto_id") || "").trim();
+  const cantidad = Number(formData.get("cantidad") || 0);
   const precioUnitario = Number(formData.get("precio") || 0);
   const clienteNombre = String(formData.get("cliente") || "").trim();
   const clienteTelefono = String(formData.get("telefono") || "").trim();
 
-  if (!productoNombre || !precioUnitario) {
-    return { error: "Producto y precio de venta son obligatorios." };
+  if (!productoId || !cantidad || !precioUnitario) {
+    return { error: "Elige el producto, la cantidad y el precio de venta." };
   }
 
-  // Reusa el producto si ya existe (por nombre, normalizado) o lo crea.
-  const nombreNormalizado = productoNombre.trim().toLowerCase();
-  const { data: existentes } = await supabase
+  const { data: producto, error: errorProducto } = await supabase
     .from("productos")
-    .select("id, nombre")
-    .ilike("nombre", nombreNormalizado);
+    .select("id, costo_referencia, cantidad_disponible")
+    .eq("id", productoId)
+    .single();
 
-  let productoId: string;
-  if (existentes && existentes.length > 0) {
-    productoId = existentes[0].id;
-  } else {
-    const { data: nuevoProducto, error: errorProducto } = await supabase
-      .from("productos")
-      .insert({ nombre: productoNombre, costo_referencia: costoUnitario })
-      .select("id")
-      .single();
-    if (errorProducto || !nuevoProducto) {
-      return { error: "No se pudo registrar el producto." };
-    }
-    productoId = nuevoProducto.id;
+  if (errorProducto || !producto) {
+    return { error: "Ese producto ya no existe en tu inventario." };
   }
 
-  // Cliente opcional, cifrado si se captura.
+  if (cantidad > producto.cantidad_disponible) {
+    return {
+      error: `Solo tienes ${producto.cantidad_disponible} en stock de ese producto.`,
+    };
+  }
+
   let clienteId: string | null = null;
   if (clienteNombre) {
     const { data: idCliente, error: errorCliente } = await supabase.rpc("crear_cliente", {
@@ -71,12 +78,14 @@ export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
     clienteId = idCliente as string;
   }
 
+  // El trigger ajustar_stock en Supabase descuenta el stock automáticamente
+  // al insertar este movimiento (tipo = venta, es_encargo = false).
   const { error: errorMovimiento } = await supabase.from("movimientos").insert({
     tipo: "venta",
-    producto_id: productoId,
+    producto_id: producto.id,
     cliente_id: clienteId,
     cantidad,
-    costo_unitario: costoUnitario,
+    costo_unitario: producto.costo_referencia,
     precio_unitario: precioUnitario,
   });
 
@@ -86,6 +95,7 @@ export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
 
   revalidatePath("/dashboard");
   revalidatePath("/ventas");
+  revalidatePath("/productos");
   return { success: true };
 }
 

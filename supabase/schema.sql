@@ -17,6 +17,7 @@ create table if not exists productos (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   costo_referencia numeric(10, 2), -- último costo de compra conocido, solo referencia
+  cantidad_disponible numeric(10, 2) not null default 0, -- stock actual, solo la ajusta el trigger
   activo boolean not null default true,
   creado_en timestamptz not null default now()
 );
@@ -40,9 +41,23 @@ create table if not exists movimientos (
   costo_unitario numeric(10, 2), -- lo que costó (compra o costo del producto vendido)
   precio_unitario numeric(10, 2), -- lo que se cobró (solo ventas)
   monto_cifrado bytea, -- opcional: monto total cifrado si se quiere ocultar aún de vistazo directo en BD
+  es_encargo boolean not null default false, -- true = venta de un encargo, no descuenta stock
   corrige_a uuid references movimientos(id), -- null si es el movimiento original
   nota text,
   creado_en timestamptz not null default now()
+);
+
+-- Encargos: lo que un cliente pidió y ella no tenía en stock (se consigue aparte).
+create table if not exists encargos (
+  id uuid primary key default gen_random_uuid(),
+  cliente_id uuid references clientes(id),
+  descripcion text not null,
+  precio_acordado numeric(10, 2) not null,
+  anticipo numeric(10, 2) not null default 0,
+  estado text not null default 'pendiente' check (estado in ('pendiente', 'entregado', 'cancelado')),
+  movimiento_id uuid references movimientos(id),
+  creado_en timestamptz not null default now(),
+  entregado_en timestamptz
 );
 
 -- Pagos aplicados: soporta abonos parciales y pagos dirigidos a una venta específica
@@ -57,6 +72,32 @@ create table if not exists pagos_aplicados (
 create index if not exists idx_movimientos_tipo_fecha on movimientos (tipo, creado_en);
 create index if not exists idx_movimientos_cliente on movimientos (cliente_id);
 create index if not exists idx_pagos_venta on pagos_aplicados (movimiento_venta_id);
+create index if not exists idx_encargos_estado on encargos (estado);
+
+-- Trigger: cada movimiento nuevo ajusta el stock automáticamente. Compra
+-- suma, venta resta (salvo que sea un encargo, cuyo producto no salió de
+-- su inventario regular). Nunca se actualiza cantidad_disponible a mano.
+create or replace function ajustar_stock() returns trigger
+language plpgsql
+as $$
+begin
+  if new.producto_id is not null then
+    if new.tipo = 'compra' then
+      update productos set cantidad_disponible = cantidad_disponible + new.cantidad
+      where id = new.producto_id;
+    elsif new.tipo = 'venta' and not new.es_encargo then
+      update productos set cantidad_disponible = cantidad_disponible - new.cantidad
+      where id = new.producto_id;
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists trg_ajustar_stock on movimientos;
+create trigger trg_ajustar_stock
+  after insert on movimientos
+  for each row execute function ajustar_stock();
 
 -- Nota sobre cifrado de columnas (pgcrypto):
 -- pgp_sym_encrypt(texto, clave) / pgp_sym_decrypt(dato, clave)
@@ -105,5 +146,39 @@ begin
     c.creado_en
   from clientes c
   order by c.creado_en desc;
+end;
+$$;
+
+create or replace function listar_encargos(p_clave text)
+returns table (
+  id uuid,
+  cliente_nombre text,
+  descripcion text,
+  precio_acordado numeric,
+  anticipo numeric,
+  estado text,
+  creado_en timestamptz,
+  entregado_en timestamptz
+)
+language plpgsql
+security definer
+as $$
+begin
+  return query
+  select
+    e.id,
+    case when e.cliente_id is null then null
+         else pgp_sym_decrypt(c.nombre_cifrado, p_clave)::text end as cliente_nombre,
+    e.descripcion,
+    e.precio_acordado,
+    e.anticipo,
+    e.estado,
+    e.creado_en,
+    e.entregado_en
+  from encargos e
+  left join clientes c on c.id = e.cliente_id
+  order by
+    case e.estado when 'pendiente' then 0 else 1 end,
+    e.creado_en desc;
 end;
 $$;

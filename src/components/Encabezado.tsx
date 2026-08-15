@@ -7,7 +7,9 @@ export default function Encabezado({ nombre }: { nombre?: string }) {
       <span className="marca">Mi negocio</span>
       <nav>
         <Link href="/dashboard">Resumen</Link>
+        <Link href="/productos">Inventario</Link>
         <Link href="/ventas">Ventas</Link>
+        <Link href="/encargos">Encargos</Link>
         {nombre && <span className="texto-suave">{nombre}</span>}
         <form action={cerrarSesion}>
           <button type="submit" className="boton-secundario" style={{ width: "auto", padding: "0.4rem 0.8rem" }}>
