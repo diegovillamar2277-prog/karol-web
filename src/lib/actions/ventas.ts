@@ -18,7 +18,9 @@ async function requireSesion() {
 // (lo que cobró). Nunca se guardan en la misma columna — es la lección real
 // que ya sacamos de licoreria-app: mezclar costo y precio cobrado rompe la
 // integridad del reporte de ganancia en cuanto alguien edita algo después.
-export async function registrarVenta(formData: FormData) {
+export type EstadoVenta = { error?: string; success?: boolean } | null;
+
+export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
   await requireSesion();
   const supabase = supabaseServer();
 

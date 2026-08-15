@@ -1,17 +1,34 @@
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #f6f5f3;
+  --card: #ffffff;
+  --texto: #1f2420;
+  --texto-suave: #6b7169;
+  --borde: #e3e1dc;
+  --accent: #2f6b4f;
+  --accent-hover: #245239;
+  --peligro: #b3452f;
+  --peligro-bg: #fbeae5;
+  --exito-bg: #eaf3ec;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #14171a;
+    --card: #1c2024;
+    --texto: #f0efec;
+    --texto-suave: #9aa19b;
+    --borde: #2b3034;
+    --accent: #4b9c76;
+    --accent-hover: #5cb587;
+    --peligro: #e18068;
+    --peligro-bg: #3a2420;
+    --exito-bg: #1e3327;
   }
 }
 
 html {
   height: 100%;
+  color-scheme: light dark;
 }
 
 html,
@@ -24,9 +41,9 @@ body {
   min-height: 100%;
   display: flex;
   flex-direction: column;
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  color: var(--texto);
+  background: var(--bg);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -42,8 +59,208 @@ a {
   text-decoration: none;
 }
 
-@media (prefers-color-scheme: dark) {
-  html {
-    color-scheme: dark;
-  }
+/* Layout compartido */
+.pagina-centrada {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+}
+
+.contenedor {
+  width: 100%;
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+
+.tarjeta {
+  background: var(--card);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.75rem;
+}
+
+.tarjeta-angosta {
+  width: 100%;
+  max-width: 360px;
+}
+
+/* Encabezado de app */
+.encabezado {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--borde);
+  background: var(--card);
+}
+
+.encabezado nav {
+  display: flex;
+  gap: 1.25rem;
+  align-items: center;
+}
+
+.encabezado nav a {
+  font-size: 0.9rem;
+  color: var(--texto-suave);
+  font-weight: 500;
+}
+
+.encabezado nav a:hover {
+  color: var(--accent);
+}
+
+.marca {
+  font-weight: 700;
+  font-size: 1.05rem;
+  letter-spacing: -0.01em;
+}
+
+/* Formularios */
+.campo {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-bottom: 1rem;
+}
+
+.campo label {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--texto-suave);
+}
+
+.campo input {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  font-size: 1rem;
+  background: var(--bg);
+  color: var(--texto);
+}
+
+.campo input:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.fila-campos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.boton {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  border-radius: 8px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.boton:hover {
+  background: var(--accent-hover);
+}
+
+.boton-secundario {
+  background: transparent;
+  color: var(--texto-suave);
+  border: 1px solid var(--borde);
+}
+
+.boton-secundario:hover {
+  background: var(--bg);
+  color: var(--texto);
+}
+
+.mensaje-error {
+  background: var(--peligro-bg);
+  color: var(--peligro);
+  padding: 0.6rem 0.85rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  margin-bottom: 1rem;
+}
+
+.texto-suave {
+  color: var(--texto-suave);
+  font-size: 0.9rem;
+}
+
+/* Dashboard */
+.grid-metricas {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metrica {
+  background: var(--card);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.25rem;
+}
+
+.metrica .etiqueta {
+  font-size: 0.8rem;
+  color: var(--texto-suave);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.metrica .valor {
+  font-size: 1.9rem;
+  font-weight: 700;
+  margin-top: 0.35rem;
+}
+
+.metrica.ganancia .valor {
+  color: var(--accent);
+}
+
+/* Tabla de ventas */
+.tabla {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+
+.tabla th {
+  text-align: left;
+  padding: 0.6rem 0.75rem;
+  color: var(--texto-suave);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border-bottom: 1px solid var(--borde);
+}
+
+.tabla td {
+  padding: 0.6rem 0.75rem;
+  border-bottom: 1px solid var(--borde);
+}
+
+.tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.etiqueta-ganancia-positiva {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.vacio {
+  text-align: center;
+  padding: 2rem;
+  color: var(--texto-suave);
 }

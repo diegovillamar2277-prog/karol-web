@@ -7,7 +7,9 @@ import { getSesion, hashPin, verificarPin } from "@/lib/auth";
 // Alta inicial: solo funciona si todavía no existe ningún usuario.
 // Es la única forma de crear la cuenta — no hay registro abierto porque
 // esta app es de un solo usuario (la dueña del negocio).
-export async function crearUsuarioInicial(formData: FormData) {
+export type EstadoFormulario = { error?: string } | null;
+
+export async function crearUsuarioInicial(_estado: EstadoFormulario, formData: FormData) {
   const nombre = String(formData.get("nombre") || "").trim();
   const pin = String(formData.get("pin") || "").trim();
 
@@ -34,7 +36,7 @@ export async function crearUsuarioInicial(formData: FormData) {
   redirect("/login");
 }
 
-export async function iniciarSesion(formData: FormData) {
+export async function iniciarSesion(_estado: EstadoFormulario, formData: FormData) {
   const pin = String(formData.get("pin") || "").trim();
   const supabase = supabaseServer();
 
