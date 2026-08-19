@@ -21,7 +21,7 @@ export async function obtenerProductosConStock() {
 
   const { data, error } = await supabase
     .from("productos")
-    .select("id, nombre, costo_referencia, cantidad_disponible")
+    .select("id, nombre, costo_referencia, precio_sugerido, cantidad_disponible")
     .eq("activo", true)
     .order("nombre", { ascending: true });
 
@@ -36,7 +36,7 @@ export async function obtenerProductosConStock() {
 export type EstadoVenta = { error?: string; success?: boolean } | null;
 
 export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
-  await requireSesion();
+  const sesion = await requireSesion();
   const supabase = supabaseServer();
 
   const productoId = String(formData.get("producto_id") || "").trim();
@@ -71,6 +71,7 @@ export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
       p_nombre: clienteNombre,
       p_telefono: clienteTelefono || null,
       p_clave: CLAVE_CIFRADO,
+      p_creado_por: sesion.usuarioId,
     });
     if (errorCliente) {
       return { error: "No se pudo registrar el cliente: " + errorCliente.message };
@@ -87,6 +88,7 @@ export async function registrarVenta(_estado: EstadoVenta, formData: FormData) {
     cantidad,
     costo_unitario: producto.costo_referencia,
     precio_unitario: precioUnitario,
+    creado_por: sesion.usuarioId,
   });
 
   if (errorMovimiento) {

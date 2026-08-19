@@ -4,12 +4,14 @@ import { redirect } from "next/navigation";
 import { supabaseServer } from "@/lib/supabase";
 import { getSesion, hashPin, verificarPin } from "@/lib/auth";
 
-// Alta inicial: solo funciona si todavía no existe ningún usuario.
-// Es la única forma de crear la cuenta — no hay registro abierto porque
-// esta app es de un solo usuario (la dueña del negocio).
+// Ya no está limitado a un solo usuario: puede haber más de una cuenta (la
+// dueña real y, aparte, una cuenta de prueba). No hay PIN "por usuario" en
+// el formulario de login porque solo se captura el PIN — se compara contra
+// todas las cuentas hasta encontrar cuál coincide (con solo 2-3 cuentas
+// esto es instantáneo).
 export type EstadoFormulario = { error?: string } | null;
 
-export async function crearUsuarioInicial(_estado: EstadoFormulario, formData: FormData) {
+export async function crearUsuario(_estado: EstadoFormulario, formData: FormData) {
   const nombre = String(formData.get("nombre") || "").trim();
   const pin = String(formData.get("pin") || "").trim();
 
@@ -18,14 +20,6 @@ export async function crearUsuarioInicial(_estado: EstadoFormulario, formData: F
   }
 
   const supabase = supabaseServer();
-  const { count } = await supabase
-    .from("usuarios")
-    .select("*", { count: "exact", head: true });
-
-  if (count && count > 0) {
-    return { error: "Ya existe una cuenta. Usa la pantalla de inicio de sesión." };
-  }
-
   const pinHash = await hashPin(pin);
   const { error } = await supabase.from("usuarios").insert({ nombre, pin_hash: pinHash });
 
@@ -40,22 +34,27 @@ export async function iniciarSesion(_estado: EstadoFormulario, formData: FormDat
   const pin = String(formData.get("pin") || "").trim();
   const supabase = supabaseServer();
 
-  const { data: usuarios, error } = await supabase.from("usuarios").select("*").limit(1);
+  const { data: usuarios, error } = await supabase.from("usuarios").select("*");
 
   if (error || !usuarios || usuarios.length === 0) {
     return { error: "No hay ninguna cuenta creada todavía." };
   }
 
-  const usuario = usuarios[0];
-  const valido = await verificarPin(pin, usuario.pin_hash);
+  let usuarioEncontrado: { id: string; nombre: string } | null = null;
+  for (const usuario of usuarios) {
+    if (await verificarPin(pin, usuario.pin_hash)) {
+      usuarioEncontrado = usuario;
+      break;
+    }
+  }
 
-  if (!valido) {
+  if (!usuarioEncontrado) {
     return { error: "PIN incorrecto." };
   }
 
   const sesion = await getSesion();
-  sesion.usuarioId = usuario.id;
-  sesion.nombre = usuario.nombre;
+  sesion.usuarioId = usuarioEncontrado.id;
+  sesion.nombre = usuarioEncontrado.nombre;
   await sesion.save();
 
   redirect("/dashboard");

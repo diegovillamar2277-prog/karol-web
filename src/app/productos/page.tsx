@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getSesion } from "@/lib/auth";
 import { listarInventario } from "@/lib/actions/productos";
 import Encabezado from "@/components/Encabezado";
-import FormularioEntrada from "./FormularioEntrada";
+import PestanasEntrada from "./PestanasEntrada";
 
 function formatoMoneda(valor: number) {
   return valor.toLocaleString("es-MX", { style: "currency", currency: "MXN" });
@@ -22,7 +22,7 @@ export default async function ProductosPage() {
       <div className="contenedor">
         <h1 style={{ marginBottom: "1.25rem", fontSize: "1.4rem" }}>Inventario</h1>
 
-        <FormularioEntrada />
+        <PestanasEntrada productos={inventario} />
 
         <div className="tarjeta" style={{ padding: 0, overflow: "hidden" }}>
           <table className="tabla">
@@ -31,12 +31,13 @@ export default async function ProductosPage() {
                 <th>Producto</th>
                 <th>Stock actual</th>
                 <th>Costo de referencia</th>
+                <th>Precio sugerido</th>
               </tr>
             </thead>
             <tbody>
               {inventario.length === 0 && (
                 <tr>
-                  <td colSpan={3} className="vacio">
+                  <td colSpan={4} className="vacio">
                     Todavía no has registrado ningún producto. Usa el formulario de arriba
                     cuando te llegue mercancía.
                   </td>
@@ -55,6 +56,7 @@ export default async function ProductosPage() {
                     {producto.cantidad_disponible}
                   </td>
                   <td>{formatoMoneda(producto.costo_referencia || 0)}</td>
+                  <td>{producto.precio_sugerido != null ? formatoMoneda(producto.precio_sugerido) : "—"}</td>
                 </tr>
               ))}
             </tbody>

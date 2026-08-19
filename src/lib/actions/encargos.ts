@@ -20,7 +20,7 @@ export type EstadoEncargo = { error?: string; success?: boolean } | null;
 // normal — lo va a conseguir aparte. No toca el stock: es una promesa de
 // entrega, no una venta de lo que ya tenía guardado.
 export async function crearEncargo(_estado: EstadoEncargo, formData: FormData) {
-  await requireSesion();
+  const sesion = await requireSesion();
   const supabase = supabaseServer();
 
   const descripcion = String(formData.get("descripcion") || "").trim();
@@ -40,6 +40,7 @@ export async function crearEncargo(_estado: EstadoEncargo, formData: FormData) {
     p_nombre: clienteNombre,
     p_telefono: clienteTelefono || null,
     p_clave: CLAVE_CIFRADO,
+    p_creado_por: sesion.usuarioId,
   });
   if (errorCliente) {
     return { error: "No se pudo registrar el cliente: " + errorCliente.message };
@@ -50,6 +51,7 @@ export async function crearEncargo(_estado: EstadoEncargo, formData: FormData) {
     descripcion,
     precio_acordado: precioAcordado,
     anticipo,
+    creado_por: sesion.usuarioId,
   });
 
   if (errorEncargo) {
@@ -73,7 +75,7 @@ export async function listarEncargos() {
 // (es_encargo = true, así que NO descuenta stock) y liga el encargo a ese
 // movimiento para que quede en el reporte de ganancia del mes.
 export async function entregarEncargo(formData: FormData) {
-  await requireSesion();
+  const sesion = await requireSesion();
   const supabase = supabaseServer();
 
   const encargoId = String(formData.get("encargo_id") || "");
@@ -106,6 +108,7 @@ export async function entregarEncargo(formData: FormData) {
       precio_unitario: encargo.precio_acordado,
       es_encargo: true,
       nota: "Entrega de encargo",
+      creado_por: sesion.usuarioId,
     })
     .select("id")
     .single();

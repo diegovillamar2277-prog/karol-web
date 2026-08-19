@@ -7,6 +7,7 @@ type Producto = {
   id: string;
   nombre: string;
   costo_referencia: number | null;
+  precio_sugerido: number | null;
   cantidad_disponible: number;
 };
 
@@ -14,11 +15,13 @@ export default function FormularioVenta({ productos }: { productos: Producto[] }
   const [estado, accion, enviando] = useActionState(registrarVenta, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [productoId, setProductoId] = useState("");
+  const [precio, setPrecio] = useState("");
 
   useEffect(() => {
     if (estado?.success) {
       formRef.current?.reset();
       setProductoId("");
+      setPrecio("");
     }
   }, [estado]);
 
@@ -28,6 +31,14 @@ export default function FormularioVenta({ productos }: { productos: Producto[] }
   );
 
   const disponibles = productos.filter((p) => p.cantidad_disponible > 0);
+
+  function alElegirProducto(id: string) {
+    setProductoId(id);
+    const producto = productos.find((p) => p.id === id);
+    // Autocompleta el precio con el precio sugerido guardado para este
+    // producto — ella solo lo ajusta si esta vez cobró distinto.
+    setPrecio(producto?.precio_sugerido != null ? String(producto.precio_sugerido) : "");
+  }
 
   return (
     <form action={accion} ref={formRef} className="tarjeta" style={{ marginBottom: "1.5rem" }}>
@@ -57,7 +68,7 @@ export default function FormularioVenta({ productos }: { productos: Producto[] }
               name="producto_id"
               required
               value={productoId}
-              onChange={(e) => setProductoId(e.target.value)}
+              onChange={(e) => alElegirProducto(e.target.value)}
               style={{
                 padding: "0.65rem 0.75rem",
                 border: "1px solid var(--borde)",
@@ -92,15 +103,25 @@ export default function FormularioVenta({ productos }: { productos: Producto[] }
             </div>
             <div className="campo">
               <label htmlFor="precio">Precio de venta (lo que cobraste)</label>
-              <input id="precio" name="precio" type="number" step="0.01" min="0" required />
+              <input
+                id="precio"
+                name="precio"
+                type="number"
+                step="0.01"
+                min="0"
+                value={precio}
+                onChange={(e) => setPrecio(e.target.value)}
+                required
+              />
             </div>
           </div>
 
           {productoSeleccionado && (
             <p className="texto-suave" style={{ marginTop: "-0.5rem", marginBottom: "1rem" }}>
-              Costo registrado de este producto: $
-              {(productoSeleccionado.costo_referencia || 0).toFixed(2)} c/u (se aplica solo, no
-              hace falta capturarlo).
+              Costo registrado: ${(productoSeleccionado.costo_referencia || 0).toFixed(2)} c/u
+              {productoSeleccionado.precio_sugerido != null && (
+                <> · precio sugerido ${productoSeleccionado.precio_sugerido.toFixed(2)} (ya puesto, ajústalo si hoy cobraste distinto)</>
+              )}
             </p>
           )}
 

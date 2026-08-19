@@ -17,8 +17,10 @@ create table if not exists productos (
   id uuid primary key default gen_random_uuid(),
   nombre text not null,
   costo_referencia numeric(10, 2), -- último costo de compra conocido, solo referencia
+  precio_sugerido numeric(10, 2), -- precio de venta sugerido, se autocompleta al vender
   cantidad_disponible numeric(10, 2) not null default 0, -- stock actual, solo la ajusta el trigger
   activo boolean not null default true,
+  creado_por uuid references usuarios(id), -- quién lo dio de alta (para limpiar datos de prueba)
   creado_en timestamptz not null default now()
 );
 
@@ -27,6 +29,7 @@ create table if not exists clientes (
   id uuid primary key default gen_random_uuid(),
   nombre_cifrado bytea not null, -- pgp_sym_encrypt(nombre, clave)
   telefono_cifrado bytea, -- pgp_sym_encrypt(telefono, clave)
+  creado_por uuid references usuarios(id),
   creado_en timestamptz not null default now()
 );
 
@@ -44,6 +47,7 @@ create table if not exists movimientos (
   es_encargo boolean not null default false, -- true = venta de un encargo, no descuenta stock
   corrige_a uuid references movimientos(id), -- null si es el movimiento original
   nota text,
+  creado_por uuid references usuarios(id),
   creado_en timestamptz not null default now()
 );
 
@@ -56,6 +60,7 @@ create table if not exists encargos (
   anticipo numeric(10, 2) not null default 0,
   estado text not null default 'pendiente' check (estado in ('pendiente', 'entregado', 'cancelado')),
   movimiento_id uuid references movimientos(id),
+  creado_por uuid references usuarios(id),
   creado_en timestamptz not null default now(),
   entregado_en timestamptz
 );
@@ -113,7 +118,8 @@ create trigger trg_ajustar_stock
 create or replace function crear_cliente(
   p_nombre text,
   p_telefono text,
-  p_clave text
+  p_clave text,
+  p_creado_por uuid default null
 ) returns uuid
 language plpgsql
 security definer
@@ -121,10 +127,11 @@ as $$
 declare
   v_id uuid;
 begin
-  insert into clientes (nombre_cifrado, telefono_cifrado)
+  insert into clientes (nombre_cifrado, telefono_cifrado, creado_por)
   values (
     pgp_sym_encrypt(p_nombre, p_clave),
-    case when p_telefono is null then null else pgp_sym_encrypt(p_telefono, p_clave) end
+    case when p_telefono is null then null else pgp_sym_encrypt(p_telefono, p_clave) end,
+    p_creado_por
   )
   returning id into v_id;
   return v_id;
